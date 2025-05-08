@@ -38,6 +38,12 @@ This quarto doc is for writing the manuscript. This is a test citation [@alba199
 
 # Data and Methods
 
+The dataset in this paper consists of 950000 tweets collected between October 15th, 2020 to November 8th, 2020, during the final weeks leading up to and the week after the 2020 US Presidential Election.  The tweets were collected using the Twitter API statuses_lookup and snsscrape for keywords. The data were scraped by a third party and are publicly available on Kaggle: [US Election 2020 Tweets](https://www.kaggle.com/datasets/manchunhui/us-election-2020-tweets/data).
+
+Observations in the dataset represent tweets which mentions either "Biden" or "Trump" in the tweet text. The dataset contains 21 columns and records metadata such as tweet text, timestamp, user ID, and various engagement metrics like follower count, likes, and retweets. However the dataset does not include edge data between users, so it is better suited for sentiment analysis rather than social network analysis.
+
+The data captures a wide range of political discourse of the election across languages and countries, however the scope of the data is limited to the keywords of the political candidates that the data were scraped on, so it is not fully representative of the political discourse in the weeks surrounding the election, neither is it a representative sample of political tweets and twitter activity more broadly. Additionally, the dataset is limited to tweets public available for scraping.
+
 # Results
 
 # Conclusions
