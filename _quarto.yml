@@ -1,5 +1,5 @@
 project:
-  title: "Research Template"
+  title: "2020 Political Tweets"
   output-dir: _products
   execute-dir: project
   pre-render: 
@@ -14,17 +14,17 @@ project:
     - "!bibliography/"
 
 author:
-  - name: Aaron Gullickson
-    orcid: 0000-0001-7237-8131
-    email: aarong@uoregon.edu
-    url: https://aarongullickson.netlify.app/
+  - name: Zane Arky
+    orcid:
+    email: zanea@uoregon.edu
+    url: 
     attributes:
       corresponding: true
     affiliations:
       - id: uo
         name: University of Oregon
         department: Sociology
-        address: 727 PLC
+        address: 
         city: Eugene
         region: OR
         country: USA
