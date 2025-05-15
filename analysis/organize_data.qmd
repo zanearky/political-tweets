@@ -5,16 +5,16 @@ title: "Organize Data Notebook"
 ```{r}
 #| label: setup
 #| include: false
-library(tidyverse)
-library(lubridate)
-library(tidytext)
+library(here)
 source(here("utils","check_packages.R"))
 source(here("utils","functions.R"))
+```
 
+```{r}
+#| label: read-data
 
 # reading in #joebiden data
-
-tweets_biden <- read.csv("data/data_raw/tweets_csv/hashtag_joebiden.csv.gz",
+tweets_biden <- read_csv(here("data", "data_raw", "tweets_csv", "hashtag_joebiden.csv.gz"),
                          na = "NA") |>
   select(tweet_id, 
          tweet, 
@@ -41,7 +41,7 @@ tweets_biden <- read.csv("data/data_raw/tweets_csv/hashtag_joebiden.csv.gz",
 
 # reading in #donaldtrump data
 
-tweets_trump <- read.csv("data/data_raw/tweets_csv/hashtag_donaldtrump.csv.gz",
+tweets_trump <- read_csv(here("data", "data_raw", "tweets_csv", "hashtag_donaldtrump.csv.gz"),
                          na = "NA") |>
   select(tweet_id, 
          tweet, 
