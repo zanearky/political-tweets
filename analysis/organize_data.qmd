@@ -5,7 +5,15 @@ title: "Organize Data Notebook"
 ```{r}
 #| label: setup
 #| include: false
-library(here)
+library(tidyverse)
+library(lubridate)
+library(tidytext)
+library(readr)
+library(stringr)
+library(tidyr)
+library(cld3)
+library(bit64)
+library(ggvenn)
 source(here("utils","check_packages.R"))
 source(here("utils","functions.R"))
 ```
@@ -13,72 +21,134 @@ source(here("utils","functions.R"))
 ```{r}
 #| label: read-data
 
-# reading in #joebiden data
-tweets_biden <- read_csv(here("data", "data_raw", "tweets_csv", "hashtag_joebiden.csv.gz"),
+# reading in biden data
+
+tweets_biden <- read_csv("data/data_raw/tweets_csv/hashtag_joebiden.csv.gz",
                          na = "NA") |>
-  select(tweet_id, 
-         tweet, 
+  mutate(created_at = ymd_hms(created_at),
+         date_simple = format(created_at, "%m-%d")) |>
+  select(tweet, 
          likes, 
          retweet_count,
-         user_id,
          user_screen_name,
          user_followers_count,
-         country,
-         user_join_date,
-         created_at,
-         source
+         user_id,
+         tweet_id,
+         date_simple,
+         created_at
   ) |>
-  mutate(
-    likes = as.numeric(likes),
-    user_followers_count = as.numeric(user_followers_count),
-    created_at = ymd_hms(created_at),
-    date_simple = format(created_at, "%m-%d")
-  ) |>
-  filter(
-    likes > 50 | retweet_count > 50,
-  )
+  filter(retweet_count > 0,
+         !(is.na(date_simple)))
 
-
-# reading in #donaldtrump data
-
-tweets_trump <- read_csv(here("data", "data_raw", "tweets_csv", "hashtag_donaldtrump.csv.gz"),
+# reading in trump data
+tweets_trump <- read_csv("data/data_raw/tweets_csv/hashtag_donaldtrump.csv.gz",
                          na = "NA") |>
-  select(tweet_id, 
-         tweet, 
+  mutate(created_at = ymd_hms(created_at),
+         date_simple = format(created_at, "%m-%d")) |>
+  select(tweet, 
          likes, 
          retweet_count,
-         user_id,
          user_screen_name,
          user_followers_count,
-         country,
-         user_join_date,
-         created_at,
-         source
+         user_id,
+         tweet_id,
+         date_simple,
+         created_at
   ) |>
-  mutate(
-    likes = as.numeric(likes),
-    user_followers_count = as.numeric(user_followers_count),
-    created_at = ymd_hms(created_at),
-    date_simple = format(created_at, "%m-%d")
-  ) |>
-  filter(
-    likes > 50 | retweet_count > 50,
-  )
-
-table(tweets_trump$date_simple)
-table(tweets_biden$date_simple)
-
-trump_tokens <- tibble(text = tweets_trump$tweet) |>
-  unnest_tokens(word, text)
-
-stop <- c("trump",
-          "biden",
-          "https",
-          "de",
-          "la",
-          "en",
-          "le",
-          "donaldtrump")
+  filter(retweet_count > 0,
+         !(is.na(date_simple)))
 ```
+
+```{r}
+#| label: clean-data
+
+# trump cleaning
+
+# cleaning tweets and extracting hashtags
+
+trump_sample <- tweets_trump
+
+trump_sample <- trump_sample |>
+  mutate(
+    tweet = str_remove_all(tweet, "(\\s#\\w+)+$"),
+    tweet = str_remove_all(tweet, "https?://\\S+"),
+    tweet = str_remove_all(tweet, "@\\w+"),
+    tweet = str_remove_all(tweet, "[^\\w\\s]"),
+    tweet = str_remove_all(tweet, "[\U0001F600-\U0001F64F]"),  
+    tweet = str_remove_all(tweet, "[\U0001F300-\U0001F5FF]"), 
+    tweet = str_remove_all(tweet, "[\U0001F680-\U0001F6FF]"), 
+    tweet = str_remove_all(tweet, "[\U0001F1E0-\U0001F1FF]"),
+    tweet = str_squish(tweet),
+    language = detect_language(tweet)
+  ) |>
+  filter(language == "en")
+
+# simple heuristic bot cleaning
+trump_sample <- trump_sample |>
+  mutate(
+    only_hashtags = str_detect(tweet, "^#\\w+(\\s+#\\w+)*$"),
+    only_url = str_detect(tweet, "^https?://"),
+    low_content = nchar(tweet) < 10,
+    suspected_bot = only_hashtags | only_url | low_content
+  ) |>
+  filter(!suspected_bot)
+
+# removing duplicates 
+trump_sample <- trump_sample[!duplicated(trump_sample$tweet_id),]
+
+
+# biden cleaning
+
+# cleaning tweets and extracting hashtags
+
+biden_sample <- tweets_biden
+
+biden_sample <- biden_sample |>
+  mutate(
+    tweet = str_remove_all(tweet, "(\\s#\\w+)+$"),
+    tweet = str_remove_all(tweet, "https?://\\S+"),
+    tweet = str_remove_all(tweet, "@\\w+"),
+    tweet = str_remove_all(tweet, "[^\\w\\s]"),
+    tweet = str_remove_all(tweet, "[\U0001F600-\U0001F64F]"),  
+    tweet = str_remove_all(tweet, "[\U0001F300-\U0001F5FF]"), 
+    tweet = str_remove_all(tweet, "[\U0001F680-\U0001F6FF]"), 
+    tweet = str_remove_all(tweet, "[\U0001F1E0-\U0001F1FF]"),
+    tweet = str_squish(tweet),
+    language = detect_language(tweet)
+  ) |>
+  filter(language == "en")
+
+# simple heuristic bot cleaning
+biden_sample <- biden_sample |>
+  mutate(
+    only_hashtags = str_detect(tweet, "^#\\w+(\\s+#\\w+)*$"),
+    only_url = str_detect(tweet, "^https?://"),
+    low_content = nchar(tweet) < 10,
+    suspected_bot = only_hashtags | only_url | low_content
+  ) |>
+  filter(!suspected_bot)
+
+# removing duplicates 
+biden_sample <- biden_sample[!duplicated(biden_sample$tweet_id),]
+
+
+#joining datasets
+list(`Tweets Trump` = unique(trump_sample$tweet_id),
+     `Tweets Biden` = unique(biden_sample$tweet_id)) |>
+  ggvenn(auto_scale = TRUE, fill_color = c("navy","seagreen"))
+
+pol_tweets <- full_join(tweets_trump, tweets_biden)
+
+pol_tweets <- pol_tweets[!duplicated(pol_tweets$tweet_id),]
+
+pol_tweets <- pol_tweets |>
+  mutate(hashtags = str_extract_all(tweet, "#\\w+"),
+         tweet = str_remove_all(tweet, "#\\w+"))
+
+# saving cleaned dataset
+save(pol_tweets, file = here("data", "data_constructed", "political_tweets.RData"))
+
+```
+
 
 This quarto doc is used to organize the data.
