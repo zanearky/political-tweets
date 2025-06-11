@@ -9,11 +9,12 @@ packages = c(
   "here", # absolute requirement always
   "knitr", # for processing quarto
   "readr","haven", # I/O
-  "tidyverse","lubridate","broom","tidytext", #tidyverse and friend
+  "tidyverse","lubridate","broom","tidytext", "patchwork", #tidyverse and friend
   "modelsummary","gt", # for table output
   "lubridate",
-  "tidytext","readr","stringr","tidyr","cld3","quanteda", # for text analysis
-  "ggvenn", # joining datasets
+  "tidytext","readr","stringr","tidyr","cld3","quanteda", "quanteda.textstats", "quanteda.textmodels", # for text analysis
+  "quanteda.textplots", "igraph", # for text visualization
+  "ggvenn", "ggVennDiagram", # venn diagrams
   "here"
 )
 

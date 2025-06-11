@@ -69,11 +69,14 @@ tweets_biden <- tweets_biden[!duplicated(tweets_biden$tweet_id),]
 
 # create variables that capture addressivity markers like #'s and @'s
 trump_sample <- tweets_trump |>
-  mutate(hashtags = str_extract_all(tweet, "#\\w+"), # creating variables that capture A-markers like #'s and @'s
-         address = str_extract_all(tweet, "@\\w+")) |>
+  distinct(tweet, .keep_all = TRUE) |>
+  mutate(hashtags = str_extract_all(tweet, "(?<=\\s|^)#[A-Za-z0-9_]+"), # creating variables that capture
+         mentions = str_extract_all(tweet, "@\\w+") # markers like #'s and @'s
+         ) |>
   mutate(tweet = str_remove_all(tweet, "https?://\\S+"), # cleaning a variety of special characters within the tweet
-         tweet = str_remove_all(tweet, "@\\w+"),
-         tweet = str_remove_all(tweet, "#\\w+"),
+         tweet = str_remove(tweet, "(\\s*#\\w+)+\\s*$"),
+         tweet = str_remove_all(tweet, "@\\w+"), # remove @ and mention
+         tweet = str_replace_all(tweet, "#(\\w+)", "\\1"), # remove only trailing hashtags
          tweet = str_remove_all(tweet, "[\U0001F600-\U0001F64F]"), # emojis
          tweet = str_remove_all(tweet, "[\U0001F300-\U0001F5FF]"), 
          tweet = str_remove_all(tweet, "[\U0001F680-\U0001F6FF]"), 
@@ -87,16 +90,18 @@ trump_sample <- tweets_trump |>
   mutate(
     hashtags = sapply(hashtags, function (x) paste(x, collapse=" ")) |> 
       str_remove_all("#"), # we separate and collapse hashtags vector into long string
-    address = sapply(address, function (x) paste(x, collapse=" ")) |>
+    mentions = sapply(mentions, function (x) paste(x, collapse=" ")) |>
          str_remove_all("@")) # we separate and collapse address vector into long string
 
 
 biden_sample <- tweets_biden |>
-  mutate(hashtags = str_extract_all(tweet, "#\\w+"),
-         address = str_extract_all(tweet, "@\\w+")) |>
+  distinct(tweet, .keep_all = TRUE) |>
+  mutate(hashtags = str_extract_all(tweet, "(?<=\\s|^)#[A-Za-z0-9_]+"),
+         mentions = str_extract_all(tweet, "@\\w+")) |>
   mutate(tweet = str_remove_all(tweet, "https?://\\S+"),
+         tweet = str_remove(tweet, "(\\s*#\\w+)+\\s*$"), 
          tweet = str_remove_all(tweet, "@\\w+"),
-         tweet = str_remove_all(tweet, "#\\w+"), 
+         tweet = str_replace_all(tweet, "#(\\w+)", "\\1"),
          tweet = str_remove_all(tweet, "[\U0001F600-\U0001F64F]"), 
          tweet = str_remove_all(tweet, "[\U0001F300-\U0001F5FF]"), 
          tweet = str_remove_all(tweet, "[\U0001F680-\U0001F6FF]"), 
@@ -110,7 +115,7 @@ biden_sample <- tweets_biden |>
   mutate(
     hashtags = sapply(hashtags, function (x) paste(x, collapse=" ")) |>
       str_remove_all("#"),
-    address = sapply(address, function (x) paste(x, collapse=" ")) |>
+    mentions = sapply(mentions, function (x) paste(x, collapse=" ")) |>
          str_remove_all("@"))
 
 # joining tweet datasets
@@ -122,8 +127,61 @@ pol_tweets <- full_join(trump_sample, biden_sample)
 
 pol_tweets <- pol_tweets[!duplicated(pol_tweets$tweet_id),]
 
+
+
+# creating a sentiment variable
+
+# tokenizing
+tweets_tokens <- pol_tweets |>
+  unnest_tokens(word, tweet)
+
+# attributing sentiment
+tweets_sentiment <- tweets_tokens |>
+  inner_join(get_sentiments("bing"), by = "word", relationship = "many-to-many") |>
+  count(tweet_id, sentiment) |>
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
+  mutate(sentiment = positive - negative)
+
+pol_tweets <- pol_tweets |>
+  left_join(tweets_sentiment, by = "tweet_id") |>
+  mutate(sentiment = ifelse(is.na(sentiment), 0, sentiment),
+         abs_sentiment = abs(sentiment),
+         retweet_like_ratio = retweet_count / likes,
+         retweet_like_ratio = ifelse((likes < 11 | retweet_count < 4) & retweet_like_ratio > 0.9, retweet_like_ratio * 0.1, retweet_like_ratio),
+         hashtags_count = str_count(hashtags, regex("\\S+", ignore_case = TRUE))) |>
+  select(user_id,
+         user_screen_name,
+         tweet_id,
+         tweet,
+         hashtags,
+         mentions,
+         likes,
+         retweet_count,
+         retweet_like_ratio,
+         hashtags_count,
+         user_followers_count,
+         sentiment,
+         abs_sentiment,
+         created_at,
+         date_simple,
+         created_at) |>
+  filter(likes > 0)
+
+pol_tweets <- pol_tweets |> # filtering troublemakers
+  filter(user_screen_name != "RareProject",
+         user_screen_name != "_Goutham__") 
+
+pol_tweets <- pol_tweets |>
+  mutate(tweet = str_to_lower(tweet)) 
+
+pol_tweets <- pol_tweets |> # removing duplicates
+  distinct(tweet, .keep_all = TRUE)
+
+pol_tweets <- pol_tweets |>
+  mutate(tweet_id = as.character(tweet_id))
+
 # saving cleaned dataset
-#save(pol_tweets, file = here("data", "data_constructed", "political_tweets.RData"))
+ save(pol_tweets, file = here("data", "data_constructed", "political_tweets.RData"))
 
 ```
 
