@@ -339,6 +339,7 @@ democracy_log <- democracy |>
 
 
 # saving cleaned dataset
+save(pol_tweets, file = here("data", "data_constructed", "political_tweets.RData"))
  save(election_fraud, file = here("data", "data_constructed", "election_fraud.RData"))
  save(democracy, file = here("data", "data_constructed", "democracy.RData"))
  
