@@ -19,6 +19,18 @@ load("data/data_constructed/political_tweets.RData")
 load("data/data_constructed/election_fraud.RData")
 load("data/data_constructed/democracy.RData")
 
+fraud_tags <- c(
+  "stopthesteal","electionfraud",
+  "corruption","voterfraud", "fraud", "counteverylegalvote", "rigged"
+)
+
+dem_tags <- c(
+  "counteveryvote",
+  "countallthevotes",
+  "democracy", 
+  "everyvotecounts"
+)
+
 ```
 
 A full understanding of the events from the time frame of when the data was captured is needed in order to fully contextualize the findings. The dataset captures tweets from 10/15/2020 to 11/8/2020. 
