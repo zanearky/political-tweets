@@ -136,8 +136,8 @@ p2 <- ggplot(data = election_fraud, aes(x = retweet_like_ratio, y = log1p(retwee
         axis.text = element_text(size = 9)) +
   facet_wrap(~mentions)
 
-combined_plot <-  (p1 + p2) + plot_layout(guides = "collect") 
-combined_plot
+(p1 + p2) + plot_layout(guides = "collect") 
+
 
 ```
 @fig-1 shows that sentiment trends in the democracy and election fraud discourse spaces move in opposite directions. It's notable how democracy discourse exhibits a higher overall positive sentiment, even in Trump mentions. Specifically in democracy discourse, positive Biden mentions with lower controversy tend to correlate with high engagement, while overall, uncontroversial and positive sentiment looks to drive engagement in democracy discourse. Conversely, Biden mentions in election fraud discourse are overwhelmingly negative, and tend to draw high retweet-to-like ratios, as well as high in engagement. Trump mentions in both discourse spaces tend to look more positive when they have higher retweet-to-like ratios, which could mean mentiong Trump with positive sentiment is likely to be controversial. Most of the outliers across all graphs which are highest in engagement are negative in sentiment regardless of candidate mention or discourse, while at the same time not indicating controversy. This suggests the presence of elite accounts with large followings, who receive amplification and endorsements regardless of what they post. The converging negative sentiment in mentions of Biden in election fraud discourse is not reflected in Trump mentions in democracy discourse. Furthermore, across discourses the groupings in Trump mentions in election fraud discourse are not as uniformly positive as Biden mentions in the democracy graph. @fig-2 further explores relationships between follower counts, tweet controversy, and sentiment direction shaping engagement. 
@@ -174,8 +174,8 @@ p4 <- ggplot(data = election_fraud, aes(x = log1p(user_followers_count), y = ret
         axis.text = element_text(size = 9)) +
   facet_wrap(~mentions)
 
-combined_plot_1 <-  (p3 + p4) + plot_layout(guides = "collect") 
-combined_plot_1
+(p3 + p4) + plot_layout(guides = "collect") 
+
 
 ```
 @fig-2 shows a clear trend of how elite accounts, characterized by higher follower counts, show significantly more controversial and engaging content. These effects look strongest in Biden mentions across both discourses. It's also notable how much fewer small accounts with fewer followers mention Biden in democracy discourse than in election fraud discourse for both Trump and Biden mentions.  This same effect is not as clear for Trump mentions across both areas of discourse. Democracy discourse maintains an overall positive sentiment across all candidate mentions, while election fraud maintains to be mainly negative. Although Trump mentions in election fraud discourse are an exception, where sentiment and engagement patterns are less distinct: comparable to election fraud discourse which mentions neither candidate. Interestingly, election fraud discourse which mentions either Trump or neither candidate looks relatively high in neutral sentiment. A deeper regression analysis further clarifies mechanisms through which elite accounts drive controversy and engagement across political discourse spaces.
