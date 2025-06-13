@@ -174,15 +174,174 @@ pol_tweets <- pol_tweets |> # filtering troublemakers
 pol_tweets <- pol_tweets |>
   mutate(tweet = str_to_lower(tweet)) 
 
+
 pol_tweets <- pol_tweets |> # removing duplicates
   distinct(tweet, .keep_all = TRUE)
 
 pol_tweets <- pol_tweets |>
   mutate(tweet_id = as.character(tweet_id))
 
-# saving cleaned dataset
- save(pol_tweets, file = here("data", "data_constructed", "political_tweets.RData"))
+# subset into #democracy and #electionfraud groups
 
+# quantile(pol_tweets$user_followers_count, 0.99, na.rm = TRUE) 
+# top 10% of pol_tweets follower counts is 6843
+
+# Fraud tags: Focus on delegitimizing the election (e.g., #Rigged, #Corruption).
+
+# Democracy tags: Emphasize participation and legitimacy of the election system (e.g., #EveryVoteCounts).
+
+fraud_tags <- c(
+  "stopthesteal","electionfraud",
+  "corruption","voterfraud", "fraud", "counteverylegalvote", "rigged"
+)
+
+dem_tags <- c(
+  "counteveryvote",
+  "countallthevotes",
+  "democracy", 
+  "everyvotecounts"
+)
+
+# Extract election fraud tweets
+election_fraud <- pol_tweets |>
+  filter(
+    str_count(tweet, "\\S+") >= 5,
+    str_detect(str_to_lower(tweet), regex("election.?fraud|voter.?fraud|rigged|corruption|steal.?election|dominion|\\bstop\\b[\\s-]the\\b[\\s-]steal\\b")) |
+    str_detect(hashtags, regex(str_c(fraud_tags, collapse = "|"), ignore_case = TRUE))
+  ) |>
+  mutate(
+    created_at = as.Date(created_at),
+    sent_direction = factor(case_when(
+      sentiment < 0 ~ "negative", 
+      sentiment > 0 ~ "positive",
+      sentiment == 0 ~ "neutral")),
+    mentions = factor(case_when(
+      str_detect(tweet, regex("trump", ignore_case = TRUE)) &
+      str_detect(tweet, regex("biden", ignore_case = TRUE)) ~ "both",
+      str_detect(tolower(tweet), "trump|realdonaldtrump|donaldtrump") ~ "trump",
+      str_detect(tolower(tweet), "biden|joe|joebiden") ~ "biden",
+      TRUE ~ "neither")),
+    post_election = ifelse(created_at >= "2020-11-03", 1, 0),
+    pop_account = ifelse(user_followers_count >= 6843, 1, 0),
+    day_since_election = as.numeric(created_at - as.Date("2020-11-03"))
+  ) |>
+  filter(mentions != "both")
+
+# Extract democracy tweets
+democracy <- pol_tweets |>
+  filter(
+    str_count(tweet, "\\S+") >= 5,
+    str_detect(str_to_lower(tweet), regex("democracy|vote.?early|\\bcount\\b[\\s-]every\\b[\\s-]vote\\b")) |
+    str_detect(hashtags, regex(str_c(dem_tags, collapse = "|"), ignore_case = TRUE))
+  ) |>
+  mutate(
+    created_at = as.Date(created_at),
+    sent_direction = factor(case_when(
+      sentiment < 0 ~ "negative", 
+      sentiment > 0 ~ "positive",
+      sentiment == 0 ~ "neutral")),
+    mentions = factor(case_when(
+      str_detect(tweet, regex("trump", ignore_case = TRUE)) &
+      str_detect(tweet, regex("biden", ignore_case = TRUE)) ~ "both",
+      str_detect(tolower(tweet), "trump|realdonaldtrump|donaldtrump") ~ "trump",
+      str_detect(tolower(tweet), "biden|joe|joebiden") ~ "biden",
+      TRUE ~ "neither")),
+    post_election = ifelse(created_at >= "2020-11-03", 1, 0),
+    pop_account = ifelse(user_followers_count >= 6843, 1, 0),
+    day_since_election = as.numeric(created_at - as.Date("2020-11-03"))
+  ) |>
+  filter(mentions != "both")
+
+# Get tweet_ids for each narrative
+ef_ids <- unique(election_fraud$tweet_id)
+dem_ids <- unique(democracy$tweet_id)
+
+# Get overlapping tweet_ids in original full set (before filtering out "both")
+all_ef_ids <- pol_tweets |>
+  filter(
+    str_count(tweet, "\\S+") >= 5,
+    str_detect(str_to_lower(tweet), regex("election.?fraud|voter.?fraud|rigged|corruption|steal.?election|dominion|\\bstop\\b[\\s-]the\\b[\\s-]steal\\b")) |
+    str_detect(hashtags, regex(str_c(fraud_tags, collapse = "|"), ignore_case = TRUE))
+  ) |>
+  pull(tweet_id)
+
+all_dem_ids <- pol_tweets |>
+  filter(
+    str_count(tweet, "\\S+") >= 5,
+    str_detect(str_to_lower(tweet), regex("democracy|vote.?early|\\bcount\\b[\\s-]every\\b[\\s-]vote\\b")) |
+    str_detect(hashtags, regex(str_c(dem_tags, collapse = "|"), ignore_case = TRUE))
+  ) |>
+  pull(tweet_id)
+
+# Find overlap ids
+overlap_ids <- intersect(all_ef_ids, all_dem_ids)
+
+# Create both dataset
+both <- pol_tweets |>
+  filter(tweet_id %in% overlap_ids) |>
+  mutate(
+    created_at = as.Date(created_at),
+    sent_direction = factor(case_when(
+      sentiment < 0 ~ "negative", 
+      sentiment > 0 ~ "positive",
+      sentiment == 0 ~ "neutral")),
+    mentions = factor(case_when(
+      str_detect(tweet, regex("trump", ignore_case = TRUE)) &
+      str_detect(tweet, regex("biden", ignore_case = TRUE)) ~ "both",
+      str_detect(tolower(tweet), "trump|realdonaldtrump|donaldtrump") ~ "trump",
+      str_detect(tolower(tweet), "biden|joe|joebiden") ~ "biden",
+      TRUE ~ "neither")),
+    post_election = ifelse(created_at >= "2020-11-03", 1, 0),
+    pop_account = ifelse(user_followers_count >= 6843, 1, 0),
+    day_since_election = as.numeric(created_at - as.Date("2020-11-03"))
+  )
+
+# Finally, exclude overlapped tweets from election_fraud and democracy datasets
+
+election_fraud <- election_fraud |>
+  filter(!(tweet_id %in% overlap_ids))
+
+democracy <- democracy |>
+  filter(!(tweet_id %in% overlap_ids))
+
+list(`democracy` = unique(democracy$tweet_id),
+     `electionfraud` = unique(election_fraud$tweet_id)) |>
+  ggvenn(auto_scale = TRUE, fill_color = c("navy","seagreen"))
+
+
+democracy <- democracy |>
+  mutate(engagement_weight = case_when(
+           likes >= 234 | retweet_count >= 88 ~ 10,
+          likes >= 26 | retweet_count >= 9 ~ 1.0,
+           likes >= 11 | retweet_count >= 4 ~ 0.1,
+           TRUE ~ 0.01
+         ))
+
+
+election_fraud <- election_fraud |>
+  mutate(engagement_weight = case_when(
+           likes >= 262 | retweet_count >= 126 ~ 10,
+          likes >= 30 | retweet_count >= 12 ~ 1.0,
+           likes >= 11 | retweet_count >= 4 ~ 0.1,
+           TRUE ~ 0.01
+         ))
+
+election_fraud_log <- election_fraud |>
+  filter(mentions == "biden" | mentions == "trump") |>
+  mutate(mentions = relevel(mentions, ref = "biden"),
+         mentions = ifelse(mentions == "trump", 0, 1),
+         sent_direction = relevel(sent_direction, ref = "positive"))
+
+democracy_log <- democracy |>
+  filter(mentions == "biden" | mentions == "trump") |>
+  mutate(mentions = relevel(mentions, ref = "trump"),
+         mentions = ifelse(mentions == "biden", 0, 1))
+
+
+# saving cleaned dataset
+ save(election_fraud, file = here("data", "data_constructed", "election_fraud.RData"))
+ save(democracy, file = here("data", "data_constructed", "democracy.RData"))
+ 
 ```
 
 

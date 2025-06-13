@@ -13,7 +13,7 @@ packages = c(
   "modelsummary","gt", # for table output
   "lubridate",
   "tidytext","readr","stringr","tidyr","cld3","quanteda", "quanteda.textstats", "quanteda.textmodels", # for text analysis
-  "quanteda.textplots", "igraph", # for text visualization
+  "quanteda.textplots", "igraph", "knitr", # for text visualization
   "ggvenn", "ggVennDiagram", # venn diagrams
   "here"
 )

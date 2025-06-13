@@ -1,8 +1,8 @@
 ---
-title: "Paper Manuscript"
+title: "How Controversy and Sentiment Shaped Twitter Engagement in US 2020 Election Narratives"
 shorttitle: "Paper"
-abstract: An Abstract
-keywords: [keyword1, keyword2]
+abstract: This study examines drivers of engagement on Twitter in pro-democracy and election fraud narratives during weeks surrounding the 2020 US Presidential Election. Analyzing 14,553 tweets, we employed a reggression analysis to measure the impact that different factors like content, user characteristics, and engagement metrics had on overall engagement within the political discourse space. Our findings show that while retweets and likes are universal predictors, the retweet-to-like ratio, interpreted as a proxy for controversy, is a consistent significant predictor of driving engagement across both narratives, with significant interactions with descriptions of tweet content. Different dynamics are revealed: in pro-democracy discourse displayed positive sentiment, even when associated with Trump, while election fraud discourse displayed overwhelmingly negative sentiments, and less positive sentiment associated with Trump. This research reveals a nuanced mechanism of users across the political spectrum engage with controversial political discourse on Twitter.
+keywords: [Twitter, Political Discourse]
 thanks: Thanks to everyone for checking this out.
 reference-section-title: References
 bibliography: ../bibliography/project.bib
@@ -28,30 +28,184 @@ format:
 library(here)
 source(here("utils","check_packages.R"))
 source(here("utils","functions.R"))
+
+#loading data
+load("data/data_constructed/democracy.RData")
+load("data/data_constructed/election_fraud.RData")
+
 ```
 
 # Introduction
 
-Since its emergence in 2006, the social networking site (SNS) Twitter has transformed from a microblogging platform into a socially and culturally diverse space offering public discourse, political commentary, and real-time news coverage and dissemination, and this space is accessed by individuals on a global scale. What makes this space more unique from other SNS sites which don’t have politics as a primary function, is that as a space for public discourse and critical engagement with real current events, the discourse is often dictated between people who otherwise would not be connected in such subjects. The algorithm that pushes the directions of the discourse relies on a complex set of interactions that are triggered on the part of the users. In the current day, SNS platforms are primary and widespread avenues through which to access public discourse, however, Twitter is unique in how much power the user has in structuring this discourse.  In this paper we ask specifically: 
-1. How do specific narratives converge in echo chambers around major events?
-2. To what extent do addressivity markers contribute to or facilitate narrative alignment within distinct ideological spaces?
-3. How does framing of a major event over time shift within these echo chambers?
-
-It is important to ask these questions to understand how public discourse forms, operates and moves to formulate current events. There has been much research on the social impact of SNS platforms, particularly Twitter and its sensationalist attitudes. On Twitter, users have always played a fundamental and organic role in shaping how content is organized on the platform. Hashtags were initially created and used by users to organize content before they became an integral organization of feeds. In addition to hashtags, social networks between users themselves are organized on Twitter through tokens such as addressivity markers and text, all of which originate from an interaction between users. Retweets are another important use of creating and establishing networks. Whereas likes function as individual engagements effect feeds on an individual level, retweets function as endorsements and work as social cues to enhance a particular idea in a social framework.
-
-Past research has outlined how we define echo chambers and methods of identifying them through content and network analysis. Much has been contributed particularly to how political echo chambers function in the circulation of ideas and ideologies, to distinguish the impact it has on the broader way people think, and the lens politics has been perceived in public discourse. Because of the way the data in this study was collected, we will be building off methods of content analysis to identify echo chambers. The goal of this paper will be to extend that prior research to formulate how echo chambers function and interact with developing events, examining how echo chambers react in the real-time news dissemination of a heavy or important current event. We aim to determine who and what gets mentioned, and how a narrative is developed or develops over time. Specifically, we are interested in how the framing of an issue reacts to shifts in sentiment or reaction to new information. Additionally, we want to determine addressivity markers that become popular around certain events and determine if this is a cause of any overlap in narrative similarity between different spaces across the political spectrum.
+Since its emergence in 2006, Twitter has evolved from a microblogging platform into a global space for real-time political discourse, news dissemination, and public engagement. Unlike other social networking sites (SNS), Twitter uniquely decentralizes control of discourse: users shape discoursethrough organic interactions like hashtags, mentions, and retweets, while algorithms amplify content based on opaque engagement metrics. This paper examines how these dynamics played out during the 2020 U.S. Presidential Election by analyzing two opposing narratives: #democracy (positive, pro-system) and #electionfraud (negative, anti-system). During election week, the use of hashtags connected these narratives together to become a battleground for political discourse. Each narrative centers around both candidates simultaneously, with the use of their names in mentions, tweet text, and hashtags appearing as prevalent throughout both  spaces. Tweets in both narratives have sentimental language. In this paper we ask specifically: Does political controversy create similar reactions across a polarized political online space? Understanding mechanisms, specifically sentiment, which form a narrative frame out of a response to controversy is critical to decoding how political discourse polarizes and influences public perception in social media spaces.
 
 
 # Background
 
+There has been much research on the social impact of SNS platforms, particularly Twitter and its sensationalist attitudes. On Twitter, users have always played a fundamental and organic role in shaping how content is organized on the platform. Twitter’s infrastructure of hashtags, retweets, and mentions was originally used by users to organize content [@papacharissi2012affective]. Retweets act as social endorsements that amplify ideologies, while likes personalize engagement, creating different incentives for engagement and virality [@papacharissi2012affective]. 
+
+*H1: Retweet-to-like ratios are indicators of controversy, and cause engagement through political division.*
+
+Prior work shows that retweet-to-like ratios could be an indicator of controversy, in the specific way retweets are rewarded in higher relative amounts to likes for uncivil tweets [@frimer2023incivility], and how controversy creates and reinforces political divides [@kratzke2023find]. Less work has been done to study if retweet-to-like ratios can explain political divides during high-engagement periods, like elections, social movements, or scandals. 
+
+*H2: Distinct political spaces have distinct emotional dynamics.*
+
+We are assuming that based on where someone stands politically, they will not react to controversy in the same way. Our study extends from past research by modeling subtle interactions between retweet-to-like ratios, account influence (log(followers)), sentiment, and engagement metrics in #democracy/#electionfraud discourse. By doing so, we reveal how framing shifts on different political narratives, in order to answer how users and Twitter's platform dynamics co-produce political public discourse. 
+
+
 # Data and Methods
 
-The dataset in this paper consists of 950000 tweets collected between October 15th, 2020 to November 8th, 2020, during the final weeks leading up to and the week after the 2020 US Presidential Election.  The tweets were collected using the Twitter API statuses_lookup and snsscrape for keywords. The data were scraped by a third party and are publicly available on Kaggle: [US Election 2020 Tweets](https://www.kaggle.com/datasets/manchunhui/us-election-2020-tweets/data).
+The dataset in this paper consists of 16450 tweets collected between October 16th, 2020 to November 9th, 2020, during the final weeks leading up to and from the week after the 2020 US Presidential Election.  The tweets were collected using the Twitter API statuses_lookup and snsscrape for keywords. The data were scraped by a third party and are publicly available on Kaggle: [US Election 2020 Tweets](https://www.kaggle.com/datasets/manchunhui/us-election-2020-tweets/data).
 
-Observations in the dataset represent tweets which mentions either "Biden" or "Trump" in the tweet text. The dataset contains 21 columns and records metadata such as tweet text, timestamp, user ID, and various engagement metrics like follower count, likes, and retweets. However the dataset does not include edge data between users, so it is better suited for sentiment analysis rather than social network analysis.
+The dataset contains 21 columns and records metadata such as tweet text, timestamp, user ID, various engagement metrics such as follower count, likes, and retweets. Our study focuses on tweet content, user follower counts, engagement metrics of likes, retweets, and the ratio of retweet per like.
 
-The data captures a wide range of political discourse of the election across languages and countries, however the scope of the data is limited to the keywords of the political candidates that the data were scraped on, so it is not fully representative of the political discourse in the weeks surrounding the election, neither is it a representative sample of political tweets and twitter activity more broadly. Additionally, the dataset is limited to tweets public available for scraping.
+User follower counts, likes, and retweets are all highly skewed. User follower counts is the most skewed, with a median of 966 and IQR = 3722. The 95th percentile reaches 42716, indicating significant skew and a high presence of smaller, non-elite accounts. To adjust for this, we log transform user follower counts, likes, and retweets in all of our models and visualizations. The retweet-to-like ratio represents a ratio of the non-log transformed metrics. We use a retweet-to-like ratio (from non log transformed values) as a metric for tweet controversy. This is inspired by previous work [@frimer2023incivility], that linked higher like to retweet ratios to indicate more civil political discourse. While we don't test this claim in our study directly, we invert the logic to interpret that high retweet-to-like ratios are indicative of tweets which are highly amplified but not as widely endorsed, consonant with patterns of controversial tweets. A visual inspection of tweets with low and high retweet-to-like ratios in our dataset supported this interpretation, though it is important to note that this interpretation is not proven in our data set substantively. An engagement weight is assigned to each tweet, that classifies it as being in either the 99th, 95th, 90th or below 90th percentile based on the amount of likes and retweets in has, assigning a double from 10 to 0.01, repesectively. 
+
+The dataset contained tweets from multiple countries, regions, and languages, and we filtered out tweets whose core text was not in English using the detect_language() function from the cld3 R package [@cld3].
+
+We focused on two opposing political narratives which were assigned a group of hashtags and phrases based off of analysis using a k-means clustering algorithm [@stewart2021projects] and clustered hashtags in the data around the chosen hashtags of #democracy and #electionfraud. We found that Joe Biden's name and campaign tags were closely associated with pro-democracy hashtags, while variants of Donald Trump campaign hashtags and maga hashtags were closely tied to various election fraud hashtags. There was small overlap between hashtags used in these both spaces. We chose a small group of hashtags clustered closely to the respective narratives that we found to be most relevant to their discourse.
+
+- Pro-democracy hashtags include: #democracy, #counteveryvote, #countallthevotes, and #everyvotecounts. 
+- Election Fraud hashtags include: #electionfraud, #voterfraud, #fraud, #stopthesteal, #corruption, #rigged, and #counteverylegalvote.
+
+We collected tweets in the data based on the detection of these signifiers in either the hashtags or as phrases in the core tweet text. For bot cleaning, we conducted a simple heuristic method that matched and filtered tweets that consisted (1) solely of urls, (2) solely of hashtags, or (3) contained fewer than 10 characters. This method is based on previous work which suggests that these attributes are reliable indicators of bot spamming [@inuwa2018lexical]. Additionally, we removed all tweets which contained less than five words in the core tweet text, excluding trailing hashtags. This reduced the the dataset to a much cleaner sample of tweets with substantive language. 
+
+From the sample of 14553 tweets, 7402 were captured on democracy mentions, while 7151 were captured on election fraud mentions. Tweets in either space are all distinct from each other, and we did not include tweets which mention both democracy and election fraud. We excluded tweets that mentioned both narratives in order to reduce semantic overlap and clarify boundaries between the groups. This allows us to compare sentiment and engagement trends between their separate discourse spaces. We also only included tweets which mentioned biden, trump, or neither in the tweet text, excluding trailing hashtags. We excluded tweets that mentioned both in order to get a clearer picture of discourse between the candidates. 
+
+This study is subject to several limitations related to the way data was collected and scope of the data. Tweets were collected based on the keywords "Biden" and "Trump," which means tweets in this data set are limited only to content that explicitly mentions these names. We also exclude overlap between narrative tags of democracy and election fraud. As a result, the data set could be missing political discourse connected to either democracy or election fraud narratives. It is a possibility that the data under represents both broader and more specific political discussions around these topics. Second, the data is limited to the time period of a month (between October 16th and November 9th). While this window captures a valuable sample of a peak in political discourse on Twitter related to the election, it misses a long-term picture of these political narratives, as well as framing and sentiment shifts. These constraints should be kept in mind and considered when interpreting the results, particularly in regards to narrative shifts or engagement patterns. 
 
 # Results
 
+@fig-1 reveals how distinct political discourse engage with and emotionally react differently to controversy and candidate mentions. 
+
+```{r}
+#| label: fig-1
+#| fig-cap: "**Retweet:Like Ratio by Log Transformed Retweet Count** *Opacity of the points indicates the engagement weight of the tweet*"
+
+p1 <- ggplot(data = democracy, aes(x = retweet_like_ratio, y = log1p(retweet_count))) +
+  geom_point(aes(color = sent_direction,
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1,5)) +
+  labs(title = "Democracy Discourse",
+       x = "Retweet:Like Ratio",
+       y = "Retweet Counts (logged)") +
+  theme(legend.title = element_text(size = 8),
+                               legend.text = element_text(size = 7),  
+                               axis.title = element_text(size = 10),  
+                               axis.text = element_text(size = 9)) +
+  facet_wrap(~mentions)
+
+
+p2 <- ggplot(data = election_fraud, aes(x = retweet_like_ratio, y = log1p(retweet_count))) +
+  geom_point(aes(color = sent_direction, 
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1, 5)) +
+  labs(title = "Election Fraud Discourse",
+       x = "Retweet:Like Ratio",
+       y = "Retweet Counts (logged)") +
+  theme(legend.title = element_text(size = 8),
+                               legend.text = element_text(size = 7),  
+                               axis.title = element_text(size = 10),  
+                               axis.text = element_text(size = 9)) +
+  facet_wrap(~mentions)
+
+combined_plot <-  (p1 + p2) + plot_layout(guides = "collect") 
+combined_plot
+
+```
+@fig-1 show that groupings between the democracy set and the election fraud set converge on sentiment direction in opposite directions, and we see a there's much more positive sentiment in the democracy graph than the election graph overall. In the democracy graph in Biden mentions, positivity tends to get more engagement, while in Biden mentions in the election fraud graph, negative sentiment dominates overwhelmingly. Overall, when controversy increases, it tends to look more negative, though also less engaging. Interestingly, Trump mentions look fairly positive in the democracy space. This could indicate that both democrats and republicans use democracy to talk positively about their candidate. However, we see in the democracy graph a few viral outliers in the Biden and Trump mentions which are both negative in sentiment, but not high on the retweet-to-like ratio scale. This could indicate elite accounts, who are liked and retweeted regardless of their tone. The overwhelming negative Biden sentiment in the election fraud graph is not reflected as the same convergence of negative Trump sentiment in the democracy graph. We also note how when comparing Trump mentions to Biden mentions across opposing narratives, the groupings in the election fraud graph in Trump mentions is not as uniformly positive as in Biden mentions in the democracy graph, though Trump mentions appear more engaging and less controversial in the election fraud space. In @fig-2 we show important relationships between follower counts, controversy, and sentiment direction.
+```{r}
+#| label: fig-2
+#| fig-cap: "**Log Transformed Follower Counts by Retweet:Like Ratio** *Opacity of the points indicates the engagement weight of the tweet*"
+
+p1 <- ggplot(data = democracy, aes(x = log1p(user_followers_count), y = retweet_like_ratio)) +
+  geom_point(aes(color = sent_direction,
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1,5)) +
+  labs(title = "Democracy Discourse",
+       x = "User Follower Counts (logged)",
+       y = "Retweet:Like Ratio") +
+  facet_wrap(~mentions)
+
+
+p2 <- ggplot(data = election_fraud, aes(x = log1p(user_followers_count), y = retweet_like_ratio)) +
+  geom_point(aes(color = sent_direction, 
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1, 5)) +
+  labs(title = "Election Fraud Discourse",
+       x = "User Follower Counts (logged)",
+       y = "Retweet:Like Ratio") +
+  facet_wrap(~mentions)
+
+combined_plot <-  (p1 + p2) + plot_layout(guides = "collect") 
+combined_plot
+
+```
+@fig-2 shows a clear trend of how elite accounts are much more controversial, and engaging. These effects look the strongest in Biden mentions in both democracy and election fraud graphs. Much less smaller accounts with less followers mention Biden in democracy discourse than they do in election fraud discourse, and this same effect is not as clear for Trump mentions across both areas of discourse. Democracy discourses looks as though it tends to be positive across all mentions, while election fraud tends to be negative, except for Trump mentions. This is opposed to democracy discourse Across both hashtags, Trump mentions with positive sentiment appear to be more controversial, while negative sentiment tends to be more controversial in Biden mentions. A regression analysis clarifies the relationship between elite accounts and driving engagement.
+
+```{r}
+#| label: fig-3
+#| fig-cap: "**Regression Coefficients for Engagement in Democracy Discourse**" 
+
+dem_models <- list(model_1 =  lm(log1p(retweet_count) ~ retweet_like_ratio + mentions + log1p(user_followers_count) + log1p(likes), data = democracy),
+                   model_2 = lm(log1p(retweet_count) ~ (retweet_like_ratio * sent_direction) + mentions + log1p(user_followers_count) + log1p(likes), data = democracy), 
+                   model_3 = lm(log1p(retweet_count) ~ (retweet_like_ratio*log1p(user_followers_count)) +  (retweet_like_ratio*sent_direction)+(mentions*log1p(user_followers_count)) + (sent_direction*log1p(user_followers_count)) + log1p(likes), data = democracy),
+                   model_4 = lm(log1p(retweet_count) ~ (retweet_like_ratio*log1p(user_followers_count)) + (retweet_like_ratio*sent_direction) + (mentions*log1p(user_followers_count))  + (sent_direction*log1p(user_followers_count)) + (mentions*sent_direction)  + log1p(likes), data = democracy))
+
+dem_analysis <- modelsummary(dem_models, 
+                             coef_map = c(
+                               "retweet_like_ratio" = "Retweet:Like Ratio",
+                               "mentionstrump" = "Mentioning Trump (vs. Biden)",
+                               "mentionsneither" = "Mentioning Neither (vs. Biden)",
+                               "log1p(user_followers_count)" = "Loggeed Followers Count",
+                               "log1p(likes)" = "Logged Likes",
+                               "sent_directionneutral" = "Neutral Sentiment (reference ~ Negative Sentiment)",
+                               "sent_directionpositive" = "Positive Sentiment (refernce ~ Negative Sentiment)"
+                               ),
+                             stars = TRUE)
+
+dem_analysis
+
+```
+
+As shown in @fig-3, our models predict a high amount of variance in logged retweets (around Adjusted R2 = 0.80), and improves from model 1 to model 4 with the addition of interaction terms, with model 4 being the best fit overall. We see the retweet-to-like ratio being highly significant across all models. While declining from (1.800 HS) to (0.676 HS) when interaction terms are introduced in model 4, the impact of the retweet-to-like ratio is spread out to its interaction with logged followers, though its individual effect still strongly predicts logged retweets. As we would expect, logged followers count and logged likes are similarly strong positive predictors of logged retweets across all models. In model 4 we see how elite accounts (retweet:like x logged followers) amplify controversy (0.139 HS). The strong positive interaction between Trump mentions and sentiment (0.102 HS) suggests an interesting effect of positive Trump mentions driving up retweets in pro-democracy discourse. This might be explained by the significant interaction of retweet-to-like ratio with positive sentiment, which has a positive effect on increased retweets (0.145 S). We can compare these results with the same models fit to election fraud data. 
+
+```{r}
+#| label: fig-4
+#| fig-cap: "**Regression Coefficients for Engagement in Election Fraud Discourse**"
+
+fraud_models <- list(model_1 =  lm(log1p(retweet_count) ~ retweet_like_ratio + mentions + log1p(user_followers_count) + log1p(likes), data = election_fraud),
+                   model_2 = lm(log1p(retweet_count) ~ (retweet_like_ratio * sent_direction) + mentions + log1p(user_followers_count) + log1p(likes), data = election_fraud), 
+                   model_3 = lm(log1p(retweet_count) ~ (retweet_like_ratio*log1p(user_followers_count)) +  (retweet_like_ratio*sent_direction)+(mentions*log1p(user_followers_count)) + (sent_direction*log1p(user_followers_count)) + log1p(likes), data = election_fraud),
+                   model_4 = lm(log1p(retweet_count) ~ (retweet_like_ratio*log1p(user_followers_count)) + (retweet_like_ratio*sent_direction) + (mentions*log1p(user_followers_count))  + (sent_direction*log1p(user_followers_count)) + (mentions*sent_direction)  + log1p(likes), data = election_fraud))
+
+fraud_analysis <- modelsummary(fraud_models, 
+                             coef_map = c(
+                               "retweet_like_ratio" = "Retweet:Like Ratio",
+                               "mentionstrump" = "Mentioning Trump (vs. Biden)",
+                               "mentionsneither" = "Mentioning Neither (vs. Biden)",
+                               "log1p(user_followers_count)" = "Loggeed Followers Count",
+                               "log1p(likes)" = "Logged Likes",
+                               "sent_directionneutral" = "Neutral Sentiment (reference ~ Negative Sentiment)",
+                               "sent_directionpositive" = "Positive Sentiment (refernce ~ Negative Sentiment)"
+                               ),
+                             stars = TRUE)
+
+fraud_analysis
+
+```
+Across all 4 models in @fig-4, R2 remains consistently high (around Adjusted R2 = 0.83), and logged likes, logged followers, and retweet-to-like ratio remain strong predictors of logged retweets, as well as many of the significant interaction terms in democracy discourse models remaining significant. However, many of ther interaction term's effects of are now diminished: The effect of elite accounts amplifying controversy to drive up retweets (retweet:like x logged followers) is much less (0.076 HS) compared to (0.139 HS) democracy models. Positive or neutral Trump mentions (positive sentiment x Trump mentioned) do not drive up retweets as much as they do in democracy discourse (0.076 S compared to 0.102 HS), along with controversial positive sentiment to that seen in democracy models (0.145 S compared to 0.048 NS). Instead, the retweet-to-like ratio (0.936 HS) and logged likes (0.634 HS) have higher effects in the election fraud models as strong predictors of engagement, and their influence is less spread out among interaction terms.
+
 # Conclusions
+
+This study investigated the dynamics of online political discourse surrounding the 2020 US Presidential Election, specifically focusing on two related and opposing political narratives of pro-democracy and election fraud and how they impact engagement. We analyzed a substantial dataset of cleaned tweets and employed robust regression models to find key factors which drove engagement in these distinct discourse spaces. 
+
+Our findings consistently show that tweet engagement is driven by Twitter's engagement dynamics of user follower counts, likes, and retweet-to-like ratios emerging as highly significant positive predictors across all models and in both narrative contexts. The high adjusted R2 scores (approximately 0.80 for democracy discourse and 0.83 for election fraud discourse) emphasize the substantial explanatory power of these variables in predicting logged retweet counts. This reinforces past studies which show how Twitter content is amplified through distinct networks and endorsement signals rapidly spread and echo information on social platforms [@brady2019effective; @papacharissi2012affective]. 
+
+One critical finding of this research is the role of retweet-to-like ratio as an indicator of controversy. Aligning with our hypothesis, retweet-to-like ratios are strong, significant predictors of engagement. This is consistent with recent work suggesting online incivility and controversial content can drive engagement, which is often confused for endorsement [@frimer2023incivility]. In our models, the direct effect of retweet-to-like ratios varied across democracy and election fraud discourses when interaction terms were introduced. However, this effect did not equally present itself across different political discourses. Retweet-to-like ratios in election fraud discourse was mediated by other contextual factors much less than ratios were in democracy discourse, indicating drives in engagement of election fraud narratives depends directly on controversial content in a tweet. 
+
+Our models also revealed distinct emotional dynamics of both discourses. In pro-democracy discourse, we found positive sentiment widespread in mentions of either Trump, Biden, or of neither of the candidates. We saw in the democracy models that positive sentiment associated with Trump mentions was linked to increased engagement, perhaps because of ironically-natured content, suggesting that positive controversial references to Trump within the pro-democracy context was engaging content. The same pattern is not found for positive Biden mentions in election fraud discourse, and positive Trump mentions, as well as any positive sentiment, had more difficulty drawing engagement than in democracy discourse. This showed how different political ideological spaces can have distinct emotional dynamics, and that controversy, and controversy which fuels engagement, does not always rely on negative sentiment, consistent with hypothesis 2.
+
+Our study does have limitations: data was collected through the keyword "Biden" and "Trump," and was limited to approximately one month of data. Additionally for analysis, data was subsetted into two distinct groups such that there would be no overlap between narratives and mentions of candidates. Such methods have limited the scope of analysis, and we do not take into account the broader, long-term, and relevant discussions. While our heuristic bot cleaning method proved effective [@inuwa2018lexical], a more sophisticated approach could further clean and strengthen the data. Future research could develop and expand on these cleaning methods, as well as collect a complete picture of the metadata of the tweet objects. More advanced methods are needed to more accurately track  the deep semantics in the core text of tweets, and in networks between users. 
+
+In conclusion, our results provide robust quantitative findings of factors driving engagement in distinct opposing political narratives during a pivotal political moment in the US. This findings of this paper contribute to a insightful perspective on how structural dynamics of political discourse function in a social media space. 

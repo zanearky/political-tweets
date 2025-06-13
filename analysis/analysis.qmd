@@ -10,4 +10,604 @@ source(here("utils","check_packages.R"))
 source(here("utils","functions.R"))
 ```
 
+The code for reading in the data and data cleaning will be found in organize_data.qmd file. The cleaned data file is found in the folder titled "data_constructed".
+
+```{r}
+#| label: load-data
+
+load("data/data_constructed/political_tweets.RData")
+
+```
+
+A full understanding of the events from the time frame of when the data was captured is needed in order to fully contextualize the findings. The dataset captures tweets from 10/15/2020 to 11/8/2020. 
+
+```{r}
+#| label: engagement-plot
+
+
+pol_tweets$pop_account <- ifelse(pol_tweets$user_followers_count>=11186, TRUE, FALSE)
+pol_tweets$unpop_account <- ifelse(pol_tweets$user_followers_count<=494, TRUE, FALSE)
+
+engagement <- pol_tweets |>
+  group_by(date_simple) |>
+  summarise(total_retweets = sum(retweet_count),
+            total_tweets = n(),
+            total_likes = sum(likes),
+            pop_tweets = sum(pop_account),
+            unpop_tweets = sum(unpop_account)) |>
+  arrange(date_simple)
+
+engagement_long <- engagement |>
+  pivot_longer(cols = c(total_retweets, pop_tweets, unpop_tweets, total_tweets, total_likes),
+               names_to = "metric",
+               values_to = "value")
+
+# Plot of Engagement Metrics
+
+ggplot(engagement_long, 
+       aes(x = as.Date(date_simple, format="%m-%d"), 
+           y = value, 
+           color = metric)) +
+  geom_line() +
+  scale_y_log10() +
+  scale_x_date(
+    date_breaks = "1 day",       
+    date_labels = "%b %d" 
+  ) +
+  scale_color_manual(name = "Metric",
+                     values = c(
+                       total_retweets = "blue",
+                       pop_tweets = "red",
+                       unpop_tweets = "springgreen4",
+                       total_tweets = "orange",
+                       total_likes = "purple"
+                     ),
+                     labels = c(
+                       total_retweets = "Total Retweets",
+                       pop_tweets = "Total Tweets from Popular Accounts",
+                       unpop_tweets = "Total Tweets from Unpopular Accounts",
+                       total_tweets = "Total Tweets",
+                       total_likes = "Total Likes"
+                     )) +
+  labs(y = "Engagement Metrics (Grouped By Day)",
+       x = "Date",
+       title = "Count (logged)",
+       legend = "Metrics") +
+    theme_minimal(base_size = 12) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "bottom",
+          plot.margin = margin(20, 20, 40, 20)) 
+```
+An interesting relationship we see here is how all these metrics follow the exact same patterns when events occur. It's important to keep in mind how these metrics all work to continuously drive each other. It's also important to note how much higher total likes are than total retweets per day. We expect to see this since retweets are used on twitter as a way to echo an opinion or idea, therefore twitter is much more saturated with likes and tweets, even though the buttons are right next to each other. Therefore we should treat retweets as a stronger engagement with a tweet's idea. The spikes we see are from various political events which occurred. We see popular accounts outperform unpopular accounts in tweet volume during election night and the day after. Some notable events:
+- 10/16 FBI begins investigating Hunter Biden's business dealings and emails with Ukraine
+- 10/23 The final presidential debate is held
+-10/25 biden hosts virtual campaign event, Trump rallies in NH and Pence rallies in NC
+- 11/1 A group of MAGA supporters called "Trump Train" block traffic along several highways and bridges across the country, surround a Biden campaign bus
+- 11/3 Election Day
+- 11/4 AP calls Arizona for Biden, Trump files lawsuits against Michigan, Georgia, and Philadelphia, as well as calling for a recount in Wisconsin
+- 11/7 Most major networks call PA and the presidency for Biden, Trump refuses to concede
+
+```{r}
+#| label: engagement-sentiment-analysis
+# quantile(pol_tweets$retweet_like_ratio, 0.90)
+
+retweets_day <- pol_tweets |>
+  filter(retweet_like_ratio >= 0.4152975) |>
+  group_by(date_simple) |>
+  summarise(
+            total_tweets = n(),
+            mean_rt_ratio = mean(retweet_like_ratio),
+            abs_sentiment_total = sum(abs_sentiment),
+            sentiment_ratio = (abs_sentiment_total/total_tweets)
+            ) |>
+  arrange(date_simple)
+
+rt_long <- retweets_day |>
+  pivot_longer(cols = c("mean_rt_ratio", "sentiment_ratio"),
+               names_to = "metric",
+               values_to = "value")
+  
+
+ggplot(rt_long, 
+       aes(x = as.Date(date_simple, format="%m-%d"), 
+           y = value, 
+           color = metric)) +
+  geom_line() +
+  facet_wrap(~metric, scales = "free_y", ncol = 1) +
+  scale_x_date(
+    date_breaks = "5 days",       
+    date_labels = "%b %d" 
+  ) +
+  scale_color_manual(name = "Metric",
+                     values = c(
+                       mean_rt_ratio = "violetred3",
+                       sentiment_ratio = "springgreen4"
+                     ),
+                     labels = c(
+                       mean_rt_ratio = "Mean Retweet:Like Ratio",
+                       sentiment_ratio = "Sentiment Ratio"
+                     )) +
+  labs(y = "Sentiment Analysis (Grouped By Day)",
+       x = "Date",
+       title = "Count",
+       color = "Metric") +
+    theme_minimal()
+```
+Sentiment here is the difference of positive-negative words in a tweet, and total sentiment is the sentiment across all tweets summed up. Since here sentiment only takes into account sentiment by word, and doesn't semantically analyze the tweets in a broad scope, the potential for inference of this measure is limited. For the most part it will give a good measure because of the limited amount of words users can use to infuse the tweet with their feelings, but we can't pick up on certain deep semantics embedded in the language of the tweets. Here I plotted the mean retweet per like and mean absolute value of sentiment per tweet grouped by day, to emphasize how much sentiment and retweets drive each other and are related. Generally in this study, I am expecting tweets with a higher proportion of retweets to likes to be more controversial, the logic being that people are quicker to retweet a controversial tweet before liking it: they are different methods of engagement that carry different meanings. This claim has been backed up in previous studies.
+
+
+I first want to get a sense of the type of language they are using around these events. Specifically we will focus on the biggest event of this time frame, which is the week of the election. I'm choosing #democracy and #electionfraud as I believe they were competing narratives which were used by the opposing political ideologies and parties: maga twitter used #electionfraud to talk about and share news and info about the election, as well as dictate a narrative about the election, and democrats used #democracy for the same purposes. I will grab a few hashtags that most heavily relate to those topics, run kmeans and cluster them with other hashtags to figure out what other hashtags were being used around or side-by-side to #electionfraud and #democracy.
+
+```{r}
+#| label: kmeans-hashtag-analysis
+
+tweets_hash <- pol_tweets |>
+   mutate(
+    hashtags = hashtags |>
+      str_split("\\s+") |>              
+      lapply(unique) |>                 
+      sapply(paste, collapse = " ")
+  )
+
+ tweets_hash <- tweets_hash |>
+  filter(str_count(hashtags, "\\S+") >= 2)
+ 
+tweets_hash <- tweets_hash[!duplicated(tweets_hash$hashtags),]
+  
+corpus_hash <- corpus(tweets_hash,
+                      docid_field = "tweet_id",
+                      text_field = "hashtags")
+
+tokens_hash <- corpus_hash |>
+  tokens(remove_punct = TRUE)
+
+dfm_hash <- dfm(tokens_hash)
+
+# removing unimportant or overly saturated hashtags in the sample that make the clusters fuzzy
+stop_tags <- c("election2020", "elections2020",
+               "electionday","news",
+               "electionresults2020","uselection2020","election",
+               "electionnight","uselection",
+               "debates2020", "politics", "uselections",
+               "2020election", "elections", "uselections2020",
+               "usaelections2020", "2020elections", "uselectionresults2020", "twitter",
+               "americadecides2020","debate",
+               "debate2020", "debatetonight", "uselectionresults",
+               "election2020results","usaelection2020",
+               "presidentialdebate2020","electionday2020",
+               "uspresidentialelections2020", "media", "presidentialelection",
+               "twitter", "debates",
+               "unitedstates", "electionresults", "elecciones2020",
+               "presidentialelection2020", "2020presidentialelection", "2020uspresidentialelection")
+
+dfm_hash <- dfm_remove(dfm_hash, stop_tags)
+
+
+# cluster around key tags that are of interest
+set.seed(12345)
+
+# democracy tags
+
+#dem_tags <- c("democracy", "countallthevotes", "freedom", "counteveryvote")
+
+dfm_dem <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, dem_tags)) >0)
+dfm_dem <- dfm_trim(dfm_dem, min_termfreq = 0.5, min_docfreq = 4, verbose = TRUE) 
+dfm_dem <- dfm_tfidf(dfm_dem)
+
+kmeans.results.10 <- kmeans(dfm_dem, centers = 4, nstart = 50)
+# clusterLabels(dfm = dfm_dem, results = kmeans.results.10, 20)
+
+
+# fraud tags
+
+#fraud_tags <- c("stopthesteal","electionfraud","rigged","voterfraud")
+
+dfm_fraud <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, fraud_tags)) >0)
+dfm_fraud <- dfm_trim(dfm_fraud, min_termfreq = 0.5, min_docfreq = 4, verbose = TRUE) 
+dfm_fraud <- dfm_tfidf(dfm_fraud)
+
+kmeans.results.10 <- kmeans(dfm_fraud, centers = 4, nstart = 50)
+# clusterLabels(dfm = dfm_fraud, results = kmeans.results.10, 20)
+
+```
+
+Here I'll visualize the most important and informing clusters for my purpose. 
+```{r}
+#| label: text-plots-analysis
+
+#democracy text plot
+textplot_wordcloud(dfm_dem[kmeans.results.10$cluster==1,], max_words=100)
+
+#voterfraud text plot
+textplot_wordcloud(dfm_fraud[kmeans.results.10$cluster==1,], max_words=100)
+
+```
+
+Cluster 1 for both #democracy and #electionfraud are the biggest, and most relevant to the research question. In #democracy we see emphasis on the hashtags #biden, #counteveryvote, #countallthevotes, #vote, #bidenharris2020 and #biden2020, which are all pro-democracy and pro-biden. I am not seeing many pro-trump tags, and those that I do see are insignificant compared to the pro-biden tags. I do see trump's name come up a lot, though, in anti-trump tags too: #trumpislosing, #trumpmeltdown, #dumptrump, which is intriguing. When people use pro-democracy hashtags, is it to voice pro-biden opinions, or more so to be critical of trump?
+
+Likewise in the #electionfraud Cluster 1, there appears to be more emphasis on biden hashtags than trump hashtags, even though #electionfraud is a clear-cut maga narrative, started by trump. There are also a lot more clear cut maga narratives being used as hashtags that it would be much more unlikely to see a democrat use, or anyone who is not maga. There are very specific hashtags that signal niche topics and even conspiracies, like #draintheswamp, #hunterbidenemails, #chinajoe, #ballotharvesting. Very specific topics like this don't show up in any of the democracy clusters. 
+
+There is some overlap between clusters. For example, #biden2020, #bidenharris2020, #trumpislosing, #maga2020, #votersupression, among others, so we can't treat these clusters as seperate echo chambers or spaces, but it does tell us that #democracy and #electionfraud tags for the most part, tend to use tags that relate to two distinct and opposing narratives about the election. 
+
+These kmeans clusters were processed for visualization using functions found in the functions file, however the visualization of these clusters won't be used in the final paper. I found the functions in a textbook titled "Discovery with Projects Data" by Brandon Stewart (contributions by Clark Bernier and Cambria Naslund), shoutout Hannah Waight putting me on.
+
+
+```{r}
+#| label: democracy-hashtags-between-candidate-mentions
+
+
+# quantile(pol_tweets$user_followers_count, 0.99, na.rm = TRUE) 
+# top 10% of pol_tweets follower counts is 6843
+
+# Fraud tags: Focus on delegitimizing the election (e.g., #Rigged, #Corruption).
+
+# Democracy tags: Emphasize participation and legitimacy of the election system (e.g., #EveryVoteCounts).
+
+fraud_tags <- c(
+ "stopthesteal","electionfraud",
+ "corruption","voterfraud", "fraud", "counteverylegalvote", "rigged"
+ )
+
+dem_tags <- c(
+  "counteveryvote",
+  "countallthevotes",
+  "democracy", 
+  "everyvotecounts"
+  )
+
+election_fraud <- pol_tweets |>
+  filter(
+         str_count(tweet, "\\S+") >= 5,
+         str_detect(str_to_lower(tweet), regex("election.?fraud|voter.?fraud|rigged|corruption|steal.?election|dominion|\\bstop\\b[\\s-]the\\b[\\s-]steal\\b")) |
+         str_detect(hashtags, regex(str_c(fraud_tags, collapse = "|"), ignore_case = TRUE))
+         ) |>
+  mutate(
+    created_at = as.Date(created_at),
+    sent_direction = factor(case_when(
+    sentiment < 0 ~ "negative", 
+    sentiment > 0 ~ "positive",
+    sentiment == 0 ~ "neutral")),
+    mentions = factor(case_when(
+      str_detect(tweet, regex("trump", ignore_case = TRUE)) &
+      str_detect(tweet, regex("biden", ignore_case = TRUE)) ~ "both",
+      str_detect(tolower(tweet), "trump|realdonaldtrump|donaldtrump") ~ "trump",
+      str_detect(tolower(tweet), "biden|joe|joebiden") ~ "biden",
+                         TRUE ~ "neither")),
+    post_election = ifelse(created_at >= "2020-11-03", 1, 0),
+    pop_account = ifelse(user_followers_count >= 6843, 1, 0), # top 10% of pol_tweets follower counts
+    day_since_election = as.numeric(created_at - as.Date("2020-11-03"))
+    ) |>
+   filter(!(
+    mentions == "both" 
+    #mentions == "neither"
+   ))
+
+democracy <- pol_tweets |>
+  filter(
+         str_count(tweet, "\\S+") >= 5,
+         str_detect(str_to_lower(tweet), regex("democracy|vote.?early|\\bcount\\b[\\s-]every\\b[\\s-]vote\\b")) |
+         str_detect(hashtags, regex(str_c(fraud_tags, collapse = "|"), ignore_case = TRUE))) |>
+  mutate(
+    created_at = as.Date(created_at),
+    sent_direction = factor(case_when(
+    sentiment < 0 ~ "negative", 
+    sentiment > 0 ~ "positive",
+    sentiment == 0 ~ "neutral")),
+    mentions = factor(case_when(
+      str_detect(tweet, regex("trump", ignore_case = TRUE)) &
+      str_detect(tweet, regex("biden", ignore_case = TRUE)) ~ "both",
+      str_detect(tolower(tweet), "trump|realdonaldtrump|donaldtrump") ~ "trump",
+      str_detect(tolower(tweet), "biden|joe|joebiden") ~ "biden",
+                         TRUE ~ "neither")),
+    post_election = ifelse(created_at >= "2020-11-03", 1, 0),
+    pop_account = ifelse(user_followers_count >= 6843, 1, 0),
+    day_since_election = as.numeric(created_at - as.Date("2020-11-03"))
+    ) |>
+   filter(!(
+    mentions == "both" 
+    #mentions == "neither"
+          ))
+
+
+list(`democracy` = unique(democracy$tweet_id),
+     `electionfraud` = unique(election_fraud$tweet_id)) |>
+  ggvenn(auto_scale = TRUE, fill_color = c("navy","seagreen"))
+
+```
+
+I'm using some of the biggest tags that I saw in the clusters, and specifically picked out the tags I thought most closely would represent the narratives I'm trying to visualize and study. Here I'm subsetting based on mentions of these tags either in the tweet text or in the hashtags, and counting which ones have mentions of trump, biden, or neither, specifically within the text. I don't care about tweets that mention both trump and biden, as I believe it will confuse the effect I'm trying to study. 
+
+```{r}
+#| label: engagement-sentiment-metric
+
+fraud_daily_mentions <- election_fraud |>
+  mutate(date = as.Date(created_at)) |>  
+  filter(mentions %in% c("trump", "biden")) |>
+  count(date, mentions)
+
+dem_daily_mentions <- democracy |>
+  mutate(date = as.Date(created_at)) |>  
+  filter(mentions %in% c("trump", "biden")) |>
+  count(date, mentions)
+
+p1 <- ggplot(fraud_daily_mentions, aes(x = date, y = n, color = mentions)) +
+  geom_line(linewidth = 1) +
+  geom_point() +  
+  scale_color_manual(
+    values = c("trump" = "tomato3", "biden" = "dodgerblue3"),  
+    labels = c("Biden", "Trump")
+  ) +
+  labs(
+    #title = "Daily Mentions of Trump vs. Biden in #electionfraud Tweets",
+    x = "Date",
+    y = "Number of Tweets",
+    color = "Candidate"
+  ) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b %d")
+
+
+p2 <- ggplot(dem_daily_mentions, aes(x = date, y = n, color = mentions)) +
+  geom_line(linewidth = 1) + 
+  geom_point(size = 1) +  
+  scale_color_manual(
+    values = c("trump" = "tomato3", "biden" = "dodgerblue3"),  
+    labels = c("Biden", "Trump")
+  ) +
+  labs(
+    #title = "Daily Mentions of Trump vs. Biden in #democracy Tweets",
+    x = "Date",
+    y = "Number of Tweets",
+    color = "Candidate"
+  ) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b %d") 
+
+# using patchwork package
+combined_plot <-  (p1 + p2)+plot_annotation(title = "Daily Trends in Election #electionfraud and #democracy Tweets: Trump vs. Biden",
+                 theme = theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                               legend.position = "bottom")) +
+  plot_layout(guides = "collect") 
+
+combined_plot
+
+```
+
+These plots show how much more trump became connected to the #democracy narrative than biden did, and at certain points biden became more connected and out-mentioned in the #electionfraud narrative. It also shows how valuable to virality trump's name is: almost right up until the election, they were similar in number of daily mentions. But when the election becomes breaking news, trump's name is of much more interest, and is tweeted out at a significantly higher volume than his opponent. We should expect the mention of his name to bring some significance to the model.
+
+```{r}
+#| label: democracy-hashtags-between-candidate-mentions
+
+#democracy_2 <- democracy |>
+#filter(month(created_at) == 11)
+
+#quantile(democracy$likes, 0.90)
+
+p1 <- ggplot(data = democracy, aes(x = log1p(user_followers_count), y = retweet_like_ratio)) +
+  geom_point(aes(color = sent_direction,
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1,5)) +
+  labs(title = "Democracy Hashtags by Mentions",
+       y = "Retweet:Like Ratio") +
+  facet_wrap(~mentions)
+
+```
+This makes sense when we think of what the Retweet:Like Ratio is telling us: as the y-axis increases, tweets are being retweets at a higher proportion than likes, indicating controversy. So we can see patterns of how negative sentiment alongside biden mentions is more controversial and retweeted at higher proportions in the #democracy narrative, while in the same narrative positive sentiment alongside trump mentions is more controversial. For biden or neither mentioned, a grouping of positive sentiment can be seen. We a fair amount of positive sentiment alongside trump mentions, but it is not so clear cut, and there appears to be a fair amount of negative sentiment as well. It is interesting in the biden mentions how accounts with larger followings that have positive sentiment, are very distinctly lower in engagement from larger accounts that have negative sentiment. It's easy to see how expressing negative sentiment about biden in a pro-biden hashtag can be controversial, 
+
+
+```{r}
+#| label: fraud-hashtags-between-candidate-mentions
+
+#election_fraud_2 <- election_fraud |>
+#  filter(month(created_at) == 11)
+
+#election_fraud <- election_fraud |>
+#  mutate(es_score = retweet_like_ratio)
+
+p2 <- ggplot(data = election_fraud, aes(x = log1p(user_followers_count), y = retweet_like_ratio)) +
+  geom_point(aes(color = sent_direction, 
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1, 5)) +
+  labs(title = "Election Fraud Hashtags",
+       y = "Retweet:Like Ratio") +
+  facet_wrap(~mentions)
+
+
+```
+
+It is clear how negative sentiment alongside biden mentions in this hashtags produce virality. It is also clear how little of the mentions are positive, compared to positive mentions of trump in #democracy. What is really interesting to note in these two graphs is how we see the ones with more engagement are clearly account with more followers. It's no surprise that popular accounts are driving engagement more than smaller accounts, but what is significant is how 
+
+
+
+```{r}
+#| label: election-fraud-log-odds-model-summary
+
+election_fraud_log <- election_fraud |>
+  filter(mentions == "biden" | mentions == "trump") |>
+  mutate(mentions = relevel(mentions, ref = "biden"),
+         mentions = ifelse(mentions == "trump", 0, 1),
+         sent_direction = relevel(sent_direction, ref = "positive"))
+
+logit_models <- list(
+  model_1 = glm(mentions ~ retweet_like_ratio + log1p(retweet_count) + log1p(likes) + log1p(user_followers_count) + sent_direction, data = election_fraud_log, family = binomial),
+  model_2 = glm(mentions ~ (retweet_like_ratio*sent_direction) + log1p(retweet_count) + log1p(likes) + log1p(user_followers_count), data = election_fraud_log, family = binomial),
+  model_3 = glm(mentions ~ (retweet_like_ratio*sent_direction) * log1p(retweet_count) + log1p(likes) + log1p(user_followers_count) + post_election + abs_sentiment, data = election_fraud_log, family = binomial),
+  model_4 <- glm(mentions ~ retweet_like_ratio * sent_direction * post_election * log1p(user_followers_count) * log1p(retweet_count) + log1p(likes) + abs_sentiment, data = election_fraud_log,family = binomial
+)
+)
+
+logit_analysis <- modelsummary(logit_models, stars = TRUE)
+
+logit_analysis
+
+```
+
+
+```{r}
+#| label: democracy-ols-model-summary
+
+ols_models <- list(model_1 =  lm(log1p(retweet_count) ~ retweet_like_ratio + mentions + log1p(user_followers_count) + log1p(likes), data = democracy),
+                   model_2 = lm(log1p(retweet_count) ~ (retweet_like_ratio * sent_direction) + mentions + log1p(user_followers_count) + log1p(likes), data = democracy), 
+                   model_3 = lm(log1p(retweet_count) ~ (retweet_like_ratio*sent_direction)+(mentions*sent_direction) +log1p(likes) + log1p(user_followers_count), data = democracy),
+                   model_4 = lm(log1p(retweet_count) ~ (retweet_like_ratio*sent_direction) + (retweet_like_ratio*log1p(user_followers_count)) + (sent_direction*log1p(user_followers_count)) +(mentions*sent_direction) + log1p(likes), data = democracy))
+
+ols_analysis <- modelsummary(ols_models, stars = TRUE)
+
+ols_analysis
+
+```
+
+This model is crazy, but I think actually makes sense logically for data analysis twitter, since lots of different metrics influence each other, here we see most of them have small marginal effects. Model is also very very accurate r^2 = 0.92, and the most significant effects directly relate to the research question. Some important ones in model 3:
+- retweet:like ratio in model 3 is 50.6: indicating a massive positive effect on virality (A more contentious tweet gets a lot more retweeted and shared to larger audiences)
+- the retweet:like ratio x mentionsneither to retweet:like ratio x mentionstrump term jumps from -33 to -71 in model 3, indicating that discourse around trump relies a lot less on controversy to get retweets and go viral.
+- in model 3 retweet:like ratio x mentionstrump x sent_direction positive is 61, indicating trump positive tweets spread more than anti-trump tweets, probably because its more engaging. 
+-sentiment polarization: sent_directionpositive has 20.9 in model 3, indicating positive sentiment increase virality, however it reduces the retweet:like ratios impact, meaning controversy is less likely to have positive sentiment. Positive sentiment spreads easily but less discriminately, while negative content requires stronger engagement signals. - 3 way interaction of trump x positive sentiment x retweet:like ratio in model 3 is 61, and shows that pro-trump tweets messaged controversially are disproportionately amplified. For neither mentions, the same interaction very diminished: To get viral when talking about democracy, you need to mention trump, and be positive about him.
+
+General effects:
+
+to be pro-trump and say something controversial = maximum engagement
+to be anti-trump + and say something controversial = suppressed engagement
+=> algorithm rewards positive partisan messaging
+=> pro-trump positivity dominates
+
+edit: All of the effects described above were being skewed by the retweets and likes: once we log-transformed these values, the model become much more reliable. 
+
+
+```{r}
+
+ggplot(data = democracy, aes(x = retweet_like_ratio, y = log1p(retweet_count))) +
+  geom_point(aes(color = sent_direction, 
+                 alpha = engagement_weight)) +
+  scale_alpha_continuous(range = c(0.1, 5)) +
+  labs(title = "Democracy Hashtags",
+       y = "Retweet:Like Ratio") +
+  facet_wrap(~mentions)
+
+```
+
+```{r}
+#| label: election-fraud-ols-model-summary
+election_fraud <- election_fraud |>
+  mutate(mentions = relevel(mentions, ref = "biden"))
+
+election_fraud_1 <- election_fraud |>
+  filter(month(created_at) == 11)
+
+ols_models <- list(
+  model_1 = lm(log1p(retweet_count) ~ retweet_like_ratio + sent_direction + day_since_election + mentions , data = election_fraud_1),
+  model_2 = lm(log1p(retweet_count) ~ (retweet_like_ratio*sent_direction*day_since_election) + mentions + sent_direction + post_election + log1p(user_followers_count), 
+              data = election_fraud_1),
+  model_3 = lm(log1p(retweet_count) ~ (retweet_like_ratio*sent_direction*mentions*day_since_election) + (log1p(user_followers_count)*mentions) + day_since_election + post_election, 
+             data = election_fraud_1)
+)
+
+ols_analysis <- modelsummary(ols_models, stars = TRUE)
+
+ols_analysis
+
+```
+This model studies how virality 
+
+
+```{r}
+#| label: democracy-log-odds-model-summary
+democracy_log <- democracy |>
+  filter(mentions == "biden" | mentions == "trump") |>
+  mutate(mentions = relevel(mentions, ref = "trump"),
+         mentions = ifelse(mentions == "biden", 0, 1))
+
+logit_models <- list(
+  model_1 = glm(mentions ~ retweet_like_ratio + retweet_count + likes +sent_direction, data = democracy_log, family = binomial),
+  model_2 = glm(mentions ~ (retweet_like_ratio*sent_direction) + retweet_count + likes + post_election + log1p(user_followers_count), data = democracy_log, family = binomial),
+  model_3 = glm(mentions ~ (retweet_like_ratio*sent_direction) + retweet_count + likes + (post_election*abs_sentiment) + log1p(user_followers_count), data = democracy_log, family = binomial)
+)
+
+log_odds_analysis <- modelsummary(logit_models, stars = TRUE)
+
+log_odds_analysis
+
+```
+
+
+
+
+```{r}
+#| label: venn-diagram-clusters-analysis
+# maga tags
+
+dem_tags <- c("democracy", "counteveryvote", "countallthevotes", "vote", "votehimout", "everyvotecounts", "voteresponsibly")
+dfm_dem <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, dem_tags)) >0)
+
+fraud_tags <- c("voterfraud", "electionfraud","rigged", "votersuppression", "stopthesteal", "fraud", "corruption", "democratsarecorrupt", "mailinballots", "counteverylegalvote", "countalllegalvotes")
+dfm_fraud <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, fraud_tags)) >0)
+
+maga_tags <- c("maga", "maga2020",
+"kag", "kag2020", "maga2020", "trump2020", "trumpwon", "democratsarecorrupt", "democratsaredestroyingamerica", "trump2020tosaveamerica", "4moreyears", "trump2020landslidevictory", "trump2020landslide"
+)
+dfm_maga <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, maga_tags)) >0)
+
+bh_tags <- c("bidenharris", "bidenharris2020",
+             "biden2020", "trumpmeltdown", "trumpislosing", "bidenharris", "bidenharris2020tosaveamerica", "bidenharristoendthisnightmare", "joebiden2020", "bidenharristosaveamerica", "joebidenkamalaharris2020", "presidentelectjoe"
+             )
+dfm_bh <- dfm_subset(dfm_hash, rowSums(dfm_select(dfm_hash, bh_tags)) >0)
+
+
+fraud_ids <- docnames(dfm_fraud)
+dem_ids   <- docnames(dfm_dem)
+bh_ids <- docnames(dfm_bh)
+maga_ids <- docnames(dfm_maga)
+
+# Filter and clean hashtags
+fraud_hashtags <- pol_tweets |>
+  filter(tweet_id %in% fraud_ids) |>
+  mutate(hashtags = str_squish(hashtags)) |>
+  separate_rows(hashtags, sep = "\\s+") |>
+  pull(hashtags) |>
+  unique()
+
+dem_hashtags <- pol_tweets |>
+  filter(tweet_id %in% dem_ids) |>
+  mutate(hashtags = str_squish(hashtags)) |>
+  separate_rows(hashtags, sep = "\\s+") |>
+  pull(hashtags) |>
+  unique()
+
+maga_hashtags <- pol_tweets |>
+  filter(tweet_id %in% maga_ids) |>
+  mutate(hashtags = str_squish(hashtags)) |>
+  separate_rows(hashtags, sep = "\\s+") |>
+  pull(hashtags) |>
+  unique()
+
+bh_hashtags <- pol_tweets |>
+  filter(tweet_id %in% bh_ids) |>
+  mutate(hashtags = str_squish(hashtags)) |>
+  separate_rows(hashtags, sep = "\\s+") |>
+  pull(hashtags) |>
+  unique()
+
+
+hash_list_maga <- list(voterfraud = fraud_hashtags,
+     democracy = dem_hashtags,
+     maga = maga_hashtags)
+
+ggVennDiagram(hash_list_maga, label_alpha = 0, label = "count") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Overlap in Hashtags Among #voterfraud, #democracy, and #maga") +
+  theme_minimal()
+
+hash_list_bh <- list(voterfraud = fraud_hashtags,
+    democracy = dem_hashtags,
+    bidenharris = bh_hashtags)
+
+ggVennDiagram(hash_list_bh, label_alpha = 0, label = "count") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Overlap in Hashtags Among #voterfraud, #democracy, and #bidenharris") +
+  theme_minimal()
+
+```
+
+failed to produce any meaningful results... took a while to figure out... thought I had it all figured out... it was a mirage.... I've left it down here where they can look pretty. 
+
+
 This quarto doc is used to analyze the data.
